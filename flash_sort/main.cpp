@@ -19,10 +19,14 @@ typedef vector<char*> vtc;
 #define TESTTIME true
 #define pb push_back
 #define COM 129
+#define STEP 28
+#define BUCKET_SIZE 3
+#define LARGE 30000
+#define num(x) ((x) - 'a' + 1)
 
 // global variable
 clock_t st = clock();
-vtc bfs;
+vts bfs[LARGE];
 char* bf;
 ll sz;
 
@@ -46,9 +50,11 @@ ll sz;
 void write_string_to_chs() {
   ll bias = 0;
   bf = new char[sz];
-  for (auto& it: bfs) {
-    sprintf(bf + bias, "%s", it);
-    bias += strlen(it);
+  for (auto& i: bfs) {
+    for (auto& j: i) {
+      sprintf(bf + bias, "%s", j.c_str());
+      bias += j.length();
+    }
   }
 }
 
@@ -57,34 +63,40 @@ string join_path(string l, string r) {
   else return l + '/' + r;
 }
 
-//void get_strings_from_file(string ifs) {
-//  ifstream iff(ifs, ifstream::binary);
-//  iff.seekg(0, iff.end);
-//  sz = iff.tellg();
-//  PR(sz);
-//  iff.seekg(0);
-//  bf = new char[sz];
-//  if (TESTTIME) fprintf(stderr, "Befor read, %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
-//  iff.read(bf, sz);
-//  if (TESTTIME) fprintf(stderr, "Read data %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
-//  iff.close();
-//  // split to string
-//  split_to_string();
-//  if (TESTTIME) fprintf(stderr, "Split to string %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
-//}
+void read_file(string ifs) {
+  ifstream iff(ifs, ifstream::binary);
+  iff.seekg(0, iff.end);
+  sz = iff.tellg();
+  iff.seekg(0);
+  if (TESTTIME) fprintf(stderr, "Befor read, %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
+  bf = new char[sz];
+  iff.read(bf, sz);
+  if (TESTTIME) fprintf(stderr, "Read data %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
+  iff.close();
+}
 
-void get_strings_from_file(string ifs) {
-  FILE* iff = fopen(ifs.c_str(), "r");
-  if (iff == NULL) perror("Error opening file.\n");
-  else {
-    sz = 0;
-    char* cs = new char[COM];
-    while(fgets(cs, COM, iff)) {
-      sz += strlen(cs);
-      bfs.pb(cs);
-      cs = new char[COM];
+void track_bucket() {
+  ll bef = 0, cur = 0;
+  int rank = 0;
+  string cs;
+  for (; cur < sz; ++cur) {
+    cs += bf[cur];
+    if (bf[cur] == '\n') {
+      bfs[rank].pb(string(cs));
+      bef = cur + 1;
+      cs = "";
+      rank = 0;
+      continue;
+    }
+    if (cur - bef < BUCKET_SIZE) {
+      rank = rank * STEP + num(bf[cur]);
     }
   }
+}
+
+void get_strings_from_file(string ifs) {
+  read_file(ifs);
+  track_bucket();
   if (TESTTIME) fprintf(stderr, "Get strings from file %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
 }
 
@@ -96,6 +108,12 @@ bool cmp_cs(char* a, char* b) {
   }
   if (i == strlen(a)) return true;
   return false;
+}
+
+void sort_bucket() {
+  for (int i = 0; i < LARGE; i++) {
+    sort(bfs[i].begin(), bfs[i].end());
+  }
 }
 
 int main(int argc, char** argv) {
@@ -110,7 +128,7 @@ int main(int argc, char** argv) {
   // get vector strings
   get_strings_from_file(ifs);
   // sort
-  sort(bfs.begin(), bfs.end(), cmp_cs);
+  sort_bucket();
   if (TESTTIME) fprintf(stderr, "Sort strings %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
   // write back to chars
   write_string_to_chs();
