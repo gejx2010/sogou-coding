@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <cstring>
 #include <cstdio>
@@ -20,8 +21,8 @@ typedef vector<char*> vtc;
 #define pb push_back
 #define COM 129
 #define STEP 28
-#define BUCKET_SIZE 3
-#define LARGE 30000
+#define BUCKET_SIZE 5
+#define LARGE 20000000
 #define num(x) ((x) - 'a' + 1)
 
 // global variable
@@ -87,9 +88,9 @@ void track_bucket() {
   ll bef = 0, cur = 0;
   int rank = 0;
   char cs[COM];
-  for (; cur < sz; ) {
-    sscanf(bf + cur, "%s\n", cs);
-    cur += strlen(cs) + 1;
+  stringstream ifs(bf);
+  while (ifs >> cs) {
+    cur += strlen(cs);
     rank = get_bucket_no(cs);
     bfs[rank].pb(string(cs));
   }
