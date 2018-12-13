@@ -52,8 +52,8 @@ void write_string_to_chs() {
   bf = new char[sz];
   for (auto& i: bfs) {
     for (auto& j: i) {
-      sprintf(bf + bias, "%s", j.c_str());
-      bias += j.length();
+      sprintf(bf + bias, "%s\n", j.c_str());
+      bias += j.length() + 1;
     }
   }
 }
@@ -75,22 +75,23 @@ void read_file(string ifs) {
   iff.close();
 }
 
+int get_bucket_no(char* cs) {
+  int res = 0;
+  for (int i = 0; i < min((int)strlen(cs), BUCKET_SIZE); i++) {
+    res = res * STEP + num(cs[i]);
+  }
+  return res;
+}
+
 void track_bucket() {
   ll bef = 0, cur = 0;
   int rank = 0;
-  string cs;
-  for (; cur < sz; ++cur) {
-    cs += bf[cur];
-    if (bf[cur] == '\n') {
-      bfs[rank].pb(string(cs));
-      bef = cur + 1;
-      cs = "";
-      rank = 0;
-      continue;
-    }
-    if (cur - bef < BUCKET_SIZE) {
-      rank = rank * STEP + num(bf[cur]);
-    }
+  char cs[COM];
+  for (; cur < sz; ) {
+    sscanf(bf + cur, "%s\n", cs);
+    cur += strlen(cs) + 1;
+    rank = get_bucket_no(cs);
+    bfs[rank].pb(string(cs));
   }
 }
 
