@@ -170,25 +170,13 @@ int main(int argc, char** argv) {
   if (argc < 4) return -1;
   char* ifs = argv[1];
   char* ofs = argv[2];
+  char* wd = argv[3];
   for (int i = 0; i < LARGE; i++) bks[i].clear();
   tha[0] = 0;
   for (int i = 1; i < THREADNUM; i++) tha[i] = tha[i - 1] + LARGE / THREADNUM;
   tha[THREADNUM] = LARGE;
-  // get vector strings
-  get_strings(ifs);
-  // sort
-  thread t[THREADNUM];
-  for (int i = 0; i < THREADNUM; ++i) 
-    t[i] = thread(sort_bucket, i);
-  for (int i = 0; i < THREADNUM; ++i)
-    t[i].join();
-  if (TESTTIME) fprintf(stderr, "Sort strings %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
-  // write back to chars
-  FILE* off = fopen(ofs, "wb");
-  write_string(off);
-  if (TESTTIME) fprintf(stderr, "Write strings %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
-  fclose(off);
-  delete[] bf;
-  if (TESTTIME) fprintf(stderr, "Process takes %f seconds in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
+  char c[100];
+  sprintf(c, "sort %s -o %s", ifs, ofs);
+  system(c);
   return 0;
 }
