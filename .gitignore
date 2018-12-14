@@ -1,4 +1,4 @@
-*.in
-*.out
+*.in*
+*.out*
 */demo
 *.tar.gz
