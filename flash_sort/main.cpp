@@ -20,14 +20,15 @@ typedef vector<char*> vtc;
 #define TESTTIME true
 #define pb push_back
 #define COM 129
-#define STEP 28
-#define BUCKET_SIZE 5
-#define LARGE 20000000
+#define STEP 27
+#define BUCKET_SIZE 2
+#define LARGE 900
 #define num(x) ((x) - 'a' + 1)
 
 // global variable
 clock_t st = clock();
 vtc bfs;
+vtc bks[LARGE];
 char* bf;
 ll sz;
 
@@ -48,11 +49,11 @@ int cs_len(char* s) {
   return 0;
 }
 
-char* write_string_to_chs(FILE* f) {
+char* write_string(FILE* f) {
   string ans;
-  for (auto& it: bfs) {
-    fwrite(it, sizeof(char), cs_len(it), f);
-  }
+  for (int i = 0; i < LARGE; ++i) 
+    for (auto& j: bks[i])
+      fwrite(j, sizeof(char), cs_len(j), f);
 }
 
 //void write_string_to_chs() {
@@ -75,6 +76,7 @@ void read_file(string ifs) {
   ifstream iff(ifs, ifstream::binary);
   iff.seekg(0, iff.end);
   sz = iff.tellg();
+  PR(sz);
   iff.seekg(0);
   if (TESTTIME) fprintf(stderr, "Befor read, %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
   bf = new char[sz];
@@ -91,17 +93,29 @@ int get_bucket_no(char* cs) {
   return res;
 }
 
-//void track_bucket() {
-//  ll bef = 0, cur = 0;
-//  int rank = 0;
-//  char cs[COM];
-//  stringstream ifs(bf);
-//  while (ifs >> cs) {
-//    cur += strlen(cs);
-//    rank = get_bucket_no(cs);
-//    bfs[rank].pb(string(cs));
-//  }
-//}
+int fill(int rank, int bef, int cur) {
+  for (int j = cur; j - bef < BUCKET_SIZE; ++j) 
+    rank = rank * STEP;
+  return rank;
+}
+
+void track_bucket() {
+  ll bef = 0, cur = 0;
+  int rank = 0;
+  cerr << "end c:" << (int)bf[sz - 1] << endl;
+  cerr << "range:" << (ll)(&bf[0]) << "," << (ll)(&bf[sz - 1]) << endl;
+  while (cur < sz) {
+    if (bf[cur] == '\n') {
+      rank = fill(rank, bef, cur);
+      bks[rank].pb(&bf[bef]);
+      rank = 0;
+      bef = ++cur;
+    } else {
+      if (cur - bef < BUCKET_SIZE) rank = rank * STEP + num(bf[cur]);
+      ++cur;
+    }
+  }
+}
 
 void write_to_bfs() {
   bfs.pb(bf);
@@ -113,25 +127,51 @@ void write_to_bfs() {
 
 void get_strings_from_file(string ifs) {
   read_file(ifs);
-  write_to_bfs();
+  track_bucket();
   if (TESTTIME) fprintf(stderr, "Get strings from file %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
 }
 
+bool not_end(char c) {
+  return c != '\n';
+}
+
+bool TEMP = false;
+void prt(char* a) {
+  cerr << (ll)a << endl;
+  for (int i = 0; not_end(a[i]); ++i) {
+    cerr << a[i];
+  }
+  cerr << endl;
+}
+
 bool cmp_cs(char* a, char* b) {
+  //if (TEMP) {
+  //  cerr << "begin:\n";
+  //  prt(a);
+  //  prt(b);
+  //  cerr << "end.\n";
+  //}
   int i = 0;
-  for (; a[i] != '\n' && b[i] != '\n'; ++i) {
+  for (; not_end(a[i]) && not_end(b[i]); ++i) {
     if (a[i] < b[i]) return true;
     else if (b[i] < a[i]) return false;
   }
-  if (a[i] == '\n') return true;
+  if (!not_end(a[i])) return true;
   return false;
 }
 
-//void sort_bucket() {
-//  for (int i = 0; i < LARGE; i++) {
-//    sort(bfs[i].begin(), bfs[i].end());
-//  }
-//}
+
+void sort_bucket() {
+  for (int i = 0; i < LARGE; i++) {
+    //cerr << "i:" << i << endl;
+    //if (i == 414270) {
+    //  TEMP = true;
+    //  for(auto& it: bks[i]) prt(it);
+    //}
+    stable_sort(bks[i].begin(), bks[i].end(), cmp_cs);
+    TEMP = false;
+  }
+}
 
 int main(int argc, char** argv) {
   if (TESTTIME) fprintf(stderr, "Begin test...\n");
@@ -139,17 +179,18 @@ int main(int argc, char** argv) {
   char* ifc = argv[1];
   char* ofc = argv[2];
   char* wd = argv[3];
+  for (int i = 0; i < LARGE; i++) bks[i].clear();
   // read in file
   string ifs = join_path(string(wd), string(ifc));
   string ofs = join_path(string(wd), string(ofc));
   // get vector strings
   get_strings_from_file(ifs);
   // sort
-  sort(bfs.begin(), bfs.end(), cmp_cs);
+  sort_bucket();
   if (TESTTIME) fprintf(stderr, "Sort strings %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
   // write back to chars
   FILE* off = fopen(ofs.c_str(), "wb");
-  write_string_to_chs(off);
+  write_string(off);
   if (TESTTIME) fprintf(stderr, "Write strings %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
   fclose(off);
   delete[] bf;
