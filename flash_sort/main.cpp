@@ -22,9 +22,9 @@ typedef vector<char*> vtc;
 #define pb push_back
 #define COM 129
 #define STEP 27
-#define BUCKET_SIZE 5
-#define LARGE 14349000
-#define THREADNUM 6
+#define BUCKET_SIZE 4
+#define LARGE 1050000
+#define THREADNUM 1
 #define num(x) ((x) - 'a' + 1)
 
 // global variable
@@ -59,17 +59,6 @@ void write_string(FILE* f) {
       fwrite(j, sizeof(char), cs_len(j), f);
 }
 
-//void write_string_to_chs() {
-//  ll bias = 0;
-//  bf = new char[sz];
-//  for (auto& i: bfs) {
-//    for (auto& j: i) {
-//      sprintf(bf + bias, "%s\n", j.c_str());
-//      bias += j.length() + 1;
-//    }
-//  }
-//}
-
 string join_path(string l, string r) {
   if (l[l.length() - 1] == '/') return l + r;
   else return l + '/' + r;
@@ -90,9 +79,11 @@ void read_file(string ifs) {
 
 int get_bucket_no(ll st, ll ed) {
   int res = 0;
+  int cb = 0x60;
   for (ll i = st; i < st + BUCKET_SIZE; i++) {
-    int c = (ed <= i) ? 0 : num(bf[i]);
-    res = res * STEP + c;
+    res <<= 5;
+    if (i < ed) 
+      res += (bf[i] - cb);
   }
   return res;
 }
