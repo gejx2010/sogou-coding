@@ -2,3 +2,5 @@
 *.out*
 */demo
 *.tar.gz
+*test_*
+*test.txt
