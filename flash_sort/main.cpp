@@ -34,7 +34,7 @@ typedef vector<char*> vtc;
 #define WRITE_SEGMENT 10000000
 
 // global variable
-clock_t st = clock();
+time_t st = time(NULL);
 vtc bfs;
 vtc bks[LARGE];
 char* bf[SEGMENT];
@@ -93,7 +93,7 @@ void read_file(string ifs) {
     //iff.seekg(j + 1 - iff.gcount(), ios_base::cur);
     iff.seekg(cp);
   }
-  if (TESTTIME) fprintf(stderr, "Read data %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
+  if (TESTTIME) fprintf(stderr, "Read data %f seconds pass in total.\n", difftime(time(NULL), st));
   iff.close();
 }
 
@@ -171,7 +171,7 @@ void sort_string(int rk) {
   get_chars_array(rk);
   sort(bkm[rk].begin(), bkm[rk].end(), cmp_cs);
   // write_file(rk);
-  if (TESTTIME) fprintf(stderr, "Get strings from file %f seconds pass in total.\n", ((float)clock() - st) / CLOCKS_PER_SEC);
+  if (TESTTIME) fprintf(stderr, "Get strings from file %f seconds pass in total.\n", difftime(time(NULL), st));
 }
 
 struct Node {
@@ -299,15 +299,15 @@ int main(int argc, char** argv) {
       t[i].join();
     ec += THREADNUM;
   }
-  if (TESTTIME) fprintf(stderr, "Sort strings %f seconds pass in total.\n", ((float)clock() - st) / CLOCKS_PER_SEC);
+  if (TESTTIME) fprintf(stderr, "Sort strings %f seconds pass in total.\n", difftime(time(NULL), st));
   // write back to chars
   FILE* off = fopen(ofs, "wb");
   // merge and write
   merge_and_write(off);
-  if (TESTTIME) fprintf(stderr, "Write strings %f seconds pass in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
+  if (TESTTIME) fprintf(stderr, "Write strings %f seconds pass in total.\n", difftime(time(NULL), st));
   fclose(off);
   for (int i = 0; i < SEGMENT; ++i)
     delete[] bf[i];
-  if (TESTTIME) fprintf(stderr, "Process takes %f seconds in total.\n", (float)(clock() - st) / CLOCKS_PER_SEC);
+  fprintf(stderr, "Process takes %f seconds in total.\n", difftime(time(NULL), st));
   return 0;
 }
