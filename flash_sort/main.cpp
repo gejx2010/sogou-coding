@@ -26,12 +26,13 @@ typedef vector<char*> vtc;
 #define pb push_back
 #define COM 129
 #define STEP 27
-#define BUCKET_SIZE 4
-#define LARGE 1050000
+#define BUCKET_SIZE 5
+#define LARGE 14350000
 #define THREADNUM 6
 #define num(x) ((x) - 'a' + 1)
 #define SEGMENT 12
-#define WRITE_SEGMENT 10000000
+#define WRITE_SEGMENT 100000000
+#define BASE_SIZE 100000000
 
 // global variable
 time_t st = time(NULL);
@@ -42,16 +43,57 @@ vtc bkm[SEGMENT];
 vtc fin;
 ll sz;
 int tha[THREADNUM + 1];
+// for input element
+char *ifs, *ofs, *wkd;
+int sf_len = 0;
 
-//void split_to_string() {
-//  string cs;
-//  for (ll i = 0; i < sz; ++i) {
-//    cs += bf[i];
-//    if (bf[i] == '\n') { bfs.pb(cs); cs = ""; }
-//  }
-//  if (!cs.empty()) bfs.pb(cs);
-//}
-//
+struct Node {
+  char* addr;
+  int rnk;
+  Node(char* a, int r) : addr(a), rnk(r) { }
+};
+
+bool operator<(Node c, Node d);
+int cs_len(char* s);
+const char* constr(int rnk);
+void write_file(int rk);
+void read_file(string ifs);
+bool not_end(char c);
+bool cmp_cs(char* a, char* b);
+void get_chars_array(int rk);
+void sort_string(int rk);
+void prt(char* a);
+void prt(char* a, int len);
+void raw(char* s, char* m, int& clen);
+void raw(char* s, char* m, int& clen, int& slen);
+void merge_and_write(FILE* off);
+void sort_bucket(int st);
+char* radix_sort(char* a, int sz);
+char* sort_chars(char* a, int sz);
+void sort_write_small_file(char* a, int sz, int rnk);
+void split_sort_file(string ifs, string wkd);
+void cutout(ifstream& f, char* a, int size, int& real_size);
+void read_chars(ifstream& f, char* s, int size, int& real_size);
+bool write_chars(char* s, int size, FILE* off);
+void merge_big_file(string ofs);
+
+int main(int argc, char** argv) {
+  if (TESTTIME) fprintf(stderr, "Begin test...\n");
+  if (argc < 4) return -1;
+  ifs = argv[1];
+  ofs = argv[2];
+  wkd = argv[3];
+  // split file to small file
+  split_sort_file(ifs, wkd);
+  // read file to segment
+  merge_big_file(ofs);
+  if (TESTTIME) fprintf(stderr, "Write strings %f seconds pass in total.\n", difftime(time(NULL), st));
+  //fclose(off);
+  //for (int i = 0; i < SEGMENT; ++i)
+  //  delete[] bf[i];
+  fprintf(stderr, "Process takes %f seconds in total.\n", difftime(time(NULL), st));
+  return 0;
+}
 
 int cs_len(char* s) {
   for (int i = 0; ; ++i) {
@@ -60,16 +102,32 @@ int cs_len(char* s) {
   return 0;
 }
 
-void write_string(FILE* f) {
-  string ans;
-  for (int i = 0; i < LARGE; ++i) 
-    for (auto& j: bks[i])
-      fwrite(j, sizeof(char), cs_len(j), f);
+const char* constr(int rnk) {
+  string s;
+  s = string(wkd) + string("tmp_") + to_string(rnk);
+  return s.c_str();
 }
 
-string join_path(string l, string r) {
-  if (l[l.length() - 1] == '/') return l + r;
-  else return l + '/' + r;
+void split_sort_file(string ifs, string wdk) {
+  ifstream iff(ifs, ifstream::binary);
+  //future<void> sd[COM];
+  // split big file into segments according BASE_SIZE
+  sf_len = 0;
+  char* a = new char[BASE_SIZE];
+  ll tot = 0;
+  while (iff) {
+    int csz = 0;
+    iff.seekg(tot);
+    read_chars(iff, a, BASE_SIZE, csz);
+    tot += csz;
+    // need to take down certain variables ?
+    sort_write_small_file(a, csz, sf_len);
+    ++sf_len;
+  }
+  PR(sf_len);
+  delete[] a;
+  // for (int i = 0; i < sf_len; ++i) sd[i].get();
+  if (TESTTIME) fprintf(stderr, "After split sort file, time pass: %f seconds.\n", difftime(time(NULL), st));
 }
 
 void read_file(string ifs) {
@@ -97,48 +155,11 @@ void read_file(string ifs) {
   iff.close();
 }
 
-//int get_bucket_no(ll st, ll ed) {
-//  int res = 0;
-//  int cb = 0x60;
-//  for (ll i = st; i < st + BUCKET_SIZE; i++) {
-//    res <<= 5;
-//    if (i < ed) 
-//      res += (bf[i] - cb);
-//  }
-//  return res;
-//}
-
-//void track_bucket() {
-//  ll bef = 0, cur = 0;
-//  int rank = 0;
-//  while (cur < sz) {
-//    if (bf[cur] == '\n') {
-//      rank = get_bucket_no(bef, cur);
-//      bks[rank].pb(&bf[bef]);
-//      bef = ++cur;
-//    } else ++cur;
-//  }
-//}
-
-//void write_to_bfs() {
-//  bfs.pb(bf);
-//  for (int i = 0; i < sz; ++i) {
-//    if (bf[i] == '\n') bfs.pb(bf + i + 1);
-//  }
-//  bfs.pop_back();
-//}
-
 bool not_end(char c) {
   return c != '\n';
 }
 
 bool cmp_cs(char* a, char* b) {
-  //if (TEMP) {
-  //  cerr << "begin:\n";
-  //  prt(a);
-  //  prt(b);
-  //  cerr << "end.\n";
-  //}
   int i = 0;
   for (; not_end(a[i]) && not_end(b[i]); ++i) {
     if (a[i] < b[i]) return true;
@@ -158,14 +179,6 @@ void get_chars_array(int rk) {
   }
 }
 
-void write_file(int rk) {
-  char name[20];
-  sprintf(name, "test_%d", rk);
-  FILE* off = fopen(name, "wb");
-  for (uint i = 0; i < bkm[rk].size(); ++i) fwrite(bkm[rk][i], sizeof(char), cs_len(bkm[rk][i]), off);
-  fclose(off);
-}
-
 void sort_string(int rk) {
   // get chars array
   get_chars_array(rk);
@@ -174,24 +187,6 @@ void sort_string(int rk) {
   if (TESTTIME) fprintf(stderr, "Get strings from file %f seconds pass in total.\n", difftime(time(NULL), st));
 }
 
-struct Node {
-  char* addr;
-  int rank;
-  Node(char* a, int r) : addr(a), rank(r) { }
-};
-
-bool operator<(Node c, Node d) {
-  char *a = c.addr, *b = d.addr;
-  int i = 0;
-  for (; a[i] != '\n' && b[i] != '\n'; ++i) {
-    if (b[i] < a[i]) return true;
-    else if (a[i] < b[i]) return false;
-  }
-  if (b[i] == '\n') return true;
-  return false;
-}
-
-bool TEMP = false;
 void prt(char* a) {
   cerr << (ll)a << endl;
   for (int i = 0; not_end(a[i]); ++i) {
@@ -208,6 +203,12 @@ void prt(char* a, int len) {
 void prtt(char* a, int total, int len) {
   for (int i = 1; i <= len; ++i) cerr << a[total - i];
   cerr << endl;
+}
+
+void raw(char* s, char* m, int& clen) {
+  int i = 0;
+  for (; not_end(s[i]); ++i) m[clen++] = s[i];
+  m[clen++] = '\n';
 }
 
 void raw(char* s, char* m, int& clen, int& slen) {
@@ -236,7 +237,7 @@ void merge_and_write(FILE* off) {
   while (!q.empty()) {
     Node t = q.top();
     q.pop();
-    int tr = t.rank;
+    int tr = t.rnk;
     raw(t.addr, mid, clen, slen);
     tlen += slen;
     //prt(t.addr);
@@ -269,45 +270,158 @@ void merge_and_write(FILE* off) {
 
 void sort_bucket(int st) {
   for (int i = tha[st]; i < tha[st + 1]; i++) {
-    //cerr << "i:" << i << endl;
-    //if (i == 414270) {
-    //  TEMP = true;
-    //  for(auto& it: bks[i]) prt(it);
-    //}
     stable_sort(bks[i].begin(), bks[i].end(), cmp_cs);
   }
 }
 
-int main(int argc, char** argv) {
-  if (TESTTIME) fprintf(stderr, "Begin test...\n");
-  if (argc < 4) return -1;
-  char* ifs = argv[1];
-  char* ofs = argv[2];
-  for (int i = 0; i < LARGE; i++) bks[i].clear();
-  tha[0] = 0;
-  for (int i = 1; i < THREADNUM; i++) tha[i] = tha[i - 1] + LARGE / THREADNUM;
-  tha[THREADNUM] = LARGE;
-  // read file to segment
-  read_file(ifs);
-  // sort each small segment
-  int ec = 0;
-  thread t[THREADNUM];
-  while (ec < SEGMENT) {
-    for (int i = 0; i < THREADNUM; ++i) 
-      t[i] = thread(sort_string, ec + i);
-    for (int i = 0; i < THREADNUM; ++i)
-      t[i].join();
-    ec += THREADNUM;
+bool operator<(Node c, Node d) {
+  char *a = c.addr, *b = d.addr;
+  int i = 0;
+  for (; a[i] != '\n' && b[i] != '\n'; ++i) {
+    if (b[i] < a[i]) return true;
+    else if (a[i] < b[i]) return false;
   }
-  if (TESTTIME) fprintf(stderr, "Sort strings %f seconds pass in total.\n", difftime(time(NULL), st));
-  // write back to chars
-  FILE* off = fopen(ofs, "wb");
-  // merge and write
-  merge_and_write(off);
-  if (TESTTIME) fprintf(stderr, "Write strings %f seconds pass in total.\n", difftime(time(NULL), st));
+  if (b[i] == '\n') return true;
+  return false;
+}
+
+int get_bucket_no(char* w, int turn) {
+  int right = COM - turn * BUCKET_SIZE;
+  int left = max(0, right - BUCKET_SIZE);
+  int len = cs_len(w);
+  if (len <= left) return 0;
+  int res = 0, i = left;
+  for (; not_end(w[i]) && i < right; ++i) 
+    res = res * STEP + num(w[i]);
+  while (i++ < right) 
+    res = res * STEP;
+  return res;
+}
+
+char* radix_sort(char* a, int sz) {
+  int turn = 0;
+  char* res = new char[sz];
+  while (turn * BUCKET_SIZE < COM) {
+    // get it into bks
+    int st = 0;
+    while (st < sz) {
+      char* w = a + st;
+      int bn = get_bucket_no(w, turn);
+      bks[bn].pb(w);
+      st += cs_len(w);
+    }
+    // write back to new chars
+    int r = 0;
+    for (int i = 0; i < LARGE; ++i) {
+      for (auto& j: bks[i]) 
+        raw(j, res, r);
+      bks[i].clear();
+    }
+    // switch res and a
+    char* mid = a;
+    a = res;
+    res = mid;
+    // add turn
+    ++turn;
+  }
+  delete[] res;
+  return a;
+}
+
+char* sort_chars(char* a, int sz) {
+  return radix_sort(a, sz);
+}
+
+void sort_write_small_file(char* a, int size, int rnk) {
+  if (TESTTIME) fprintf(stderr, "Begin sort_write_small_file function, size: %d, rnk: %d, time pass: %f seconds.\n", size, rnk, difftime(time(NULL), st));
+  a = sort_chars(a, size);
+  if (TESTTIME) fprintf(stderr, "after sort chars, time pass: %f seconds.\n", difftime(time(NULL), st));
+  FILE* off = fopen(constr(rnk), "wb");
+  fwrite(a, sizeof(char), size, off);
+  if (TESTTIME) fprintf(stderr, "after write small chars, size: %d, rnk: %d, time pass: %f seconds.\n", size, rnk, difftime(time(NULL), st));
   fclose(off);
-  for (int i = 0; i < SEGMENT; ++i)
-    delete[] bf[i];
-  fprintf(stderr, "Process takes %f seconds in total.\n", difftime(time(NULL), st));
-  return 0;
+}
+
+void cutout(ifstream& f, char* a, int size, int& real_size) {
+  for (int j = f.gcount() - 1; 0 <= j; --j) 
+    if (a[j] == '\n') {
+      real_size = j + 1;
+      break;
+    }
+}
+
+void read_chars(ifstream& f, char* s, int size, int& real_size) {
+    f.read(s, size);
+    cutout(f, s, size, real_size);
+}
+
+bool write_chars(char* s, int size, FILE* off) {
+  fwrite(s, 1, size, off);
+  delete[] s;
+  if (TESTTIME) fprintf(stderr, "after write WRITE_SEGMENT time pass: %f seconds.\n", difftime(time(NULL), st));
+  return true;
+}
+
+void merge_big_file(string ofs) {
+  if (TESTTIME) fprintf(stderr, "Begin merge big file, time pass: %f seconds.\n", difftime(time(NULL), st));
+  FILE* off = fopen(ofs.c_str(), "wb");
+  int sub_size = BASE_SIZE / sf_len;
+  ifstream f[sf_len];
+  char* s[sf_len];
+  for (int i = 0; i < sf_len; ++i) s[i] = new char[sub_size];
+  int esz[sf_len];
+  // get file stream and read first
+  for (int i = 0; i < sf_len; ++i) {
+    f[i].open(constr(i), ifstream::binary);
+    read_chars(f[i], s[i], sub_size, esz[i]);
+  }
+  if (TESTTIME) fprintf(stderr, "after read first file segment, time pass: %f seconds.\n", difftime(time(NULL), st));
+  // get priority queue and first push
+  priority_queue<Node> q;
+  for (int i = 0; i < sf_len; ++i) 
+    q.push(Node(s[i], i));
+  // loop over
+  int has_read[sf_len];
+  ll total_read[sf_len];
+  memset(has_read, 0, sizeof has_read);
+  memset(total_read, 0, sizeof total_read);
+  future<bool> sft = async(launch::async, [=] {
+    return true;
+  });
+  char* mid = new char[WRITE_SEGMENT + COM];
+  while (!q.empty()) {
+    int clen = 0;
+    while (!q.empty() && clen < WRITE_SEGMENT) {
+      Node t = q.top();
+      int rk = t.rnk;
+      int slen = 0;
+      raw(t.addr, mid, clen, slen);
+      q.pop();
+      has_read[rk] += slen;
+      if (has_read[rk] == esz[rk]) {
+        if (f[rk]) {
+          total_read[rk] += has_read[rk];
+          f[rk].seekg(total_read[rk]);
+          read_chars(f[rk], s[rk], sub_size, esz[rk]);
+          has_read[rk] = 0;
+        } else continue;
+      }
+      q.push(Node(s[rk] + has_read[rk], rk));
+    }
+    if (TESTTIME) fprintf(stderr, "after get WRITE_SEGMENT time pass: %f seconds.\n", difftime(time(NULL), st));
+    if (sft.get()) {
+      // take down async parameters
+      char* cc = mid;
+      int csz = clen;
+      sft = async(launch::async, write_chars, cc, csz, off);
+      mid = new char[WRITE_SEGMENT + COM];
+    }
+  }
+  sft.get();
+  // clean pointers
+  delete[] mid;
+  for (int i = 0; i < sf_len; ++i) delete[] s[i];
+  // close file
+  for (int i = 0; i < sf_len; ++i) f[i].close();
+  fclose(off);
 }
