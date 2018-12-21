@@ -52,8 +52,8 @@ struct Node {
   int rnk;
   Node(char* a, int r) : addr(a), rnk(r) { }
 };
-
 bool operator<(Node c, Node d);
+
 int cs_len(char* s);
 const char* constr(int rnk);
 void write_file(int rk);
@@ -131,7 +131,6 @@ void split_sort_file(string ifs, string wdk) {
     sort_write_small_file(sf_len);
     ++sf_len;
   }
-  PR(sf_len);
   for (int i = 0; i < sf_len; ++i) delete bf[i];
   if (TESTTIME) fprintf(stderr, "After split sort file, time pass: %f seconds.\n", difftime(time(NULL), st));
 }
@@ -187,7 +186,6 @@ void sort_string(int rk) {
   // get chars array
   get_chars_array(rk);
   stable_sort(bkm[rk].begin(), bkm[rk].end(), cmp_cs);
-  if (TESTTIME) fprintf(stderr, "Get strings from file %f seconds pass in total.\n", difftime(time(NULL), st));
 }
 
 void prt(char* a) {
@@ -222,7 +220,6 @@ void raw(char* s, char* m, int& clen, int& slen) {
 }
 
 void merge_and_write(FILE* off) {
-  PR(off);
   priority_queue<Node> q;
   int where[SEGMENT];
   int csz[SEGMENT];
@@ -256,16 +253,13 @@ void merge_and_write(FILE* off) {
       int cc = clen;
       char* tmp = mid;
       sft = async(launch::async, [&]{
-        prt(tmp);
-        PR(cc);
         fwrite(tmp, sizeof(char), cc, off);
-        PR(cc);
         delete[] tmp;
         return true;
       });
     }
   }
-  sft.get();
+  sft.wait();
 }
 
 void sort_bucket(int st) {
@@ -387,7 +381,6 @@ void merge_big_file(string ofs) {
     f[i].open(constr(i), ifstream::binary);
     read_chars(f[i], s[i], sub_size, esz[i]);
   }
-  if (TESTTIME) fprintf(stderr, "after read first file segment, time pass: %f seconds.\n", difftime(time(NULL), st));
   // get priority queue and first push
   priority_queue<Node> q;
   for (int i = 0; i < sf_len; ++i) 
