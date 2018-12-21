@@ -32,7 +32,7 @@ typedef vector<char*> vtc;
 #define num(x) ((x) - 'a' + 1)
 #define SEGMENT 12
 #define WRITE_SEGMENT 100000000
-#define BASE_SIZE 100000000
+#define BASE_SIZE 1000000000
 
 // global variable
 time_t st = time(NULL);
@@ -69,8 +69,9 @@ void raw(char* s, char* m, int& clen, int& slen);
 void merge_and_write(FILE* off);
 void sort_bucket(int st);
 char* radix_sort(char* a, int sz);
-char* sort_chars(char* a, int sz);
-void sort_write_small_file(char* a, int sz, int rnk);
+void bucket_sort();
+void sort_chars();
+void sort_write_small_file(int rnk);
 void split_sort_file(string ifs, string wkd);
 void cutout(ifstream& f, char* a, int size, int& real_size);
 void read_chars(ifstream& f, char* s, int size, int& real_size);
@@ -110,23 +111,28 @@ const char* constr(int rnk) {
 
 void split_sort_file(string ifs, string wdk) {
   ifstream iff(ifs, ifstream::binary);
-  //future<void> sd[COM];
   // split big file into segments according BASE_SIZE
   sf_len = 0;
-  char* a = new char[BASE_SIZE];
+  ll esz = BASE_SIZE / SEGMENT;
+  for (int i = 0; i < SEGMENT; ++i)
+    bf[i] = new char[esz + 1];
   ll tot = 0;
   while (iff) {
-    int csz = 0;
-    iff.seekg(tot);
-    read_chars(iff, a, BASE_SIZE, csz);
-    tot += csz;
-    // need to take down certain variables ?
-    sort_write_small_file(a, csz, sf_len);
+    // read in a BASE_SIZE
+    int ck = 0;
+    for (int i = 0; i < SEGMENT; ++i) bf[i][0] = '\0';
+    while (iff && ck < SEGMENT) {
+      int csz = 0;
+      iff.seekg(tot);
+      read_chars(iff, bf[ck], esz, csz);
+      tot += csz;
+      ++ck;
+    }
+    sort_write_small_file(sf_len);
     ++sf_len;
   }
   PR(sf_len);
-  delete[] a;
-  // for (int i = 0; i < sf_len; ++i) sd[i].get();
+  for (int i = 0; i < sf_len; ++i) delete bf[i];
   if (TESTTIME) fprintf(stderr, "After split sort file, time pass: %f seconds.\n", difftime(time(NULL), st));
 }
 
@@ -170,20 +176,17 @@ bool cmp_cs(char* a, char* b) {
 }
 
 void get_chars_array(int rk) {
-  int bef = 0;
-  for (int i = 0; bf[rk][i] != '\0'; ++i) {
-    if (bf[rk][i] == '\n') {
-      bkm[rk].pb(bf[rk] + bef);
-      bef = i + 1;
-    }
-  }
+  bkm[rk].pb(bf[rk]);
+  for (int i = 0; bf[rk][i] != '\0'; ++i) 
+    if (bf[rk][i] == '\n') 
+      bkm[rk].pb(bf[rk] + i + 1);
+  bkm[rk].pop_back();
 }
 
 void sort_string(int rk) {
   // get chars array
   get_chars_array(rk);
-  sort(bkm[rk].begin(), bkm[rk].end(), cmp_cs);
-  // write_file(rk);
+  stable_sort(bkm[rk].begin(), bkm[rk].end(), cmp_cs);
   if (TESTTIME) fprintf(stderr, "Get strings from file %f seconds pass in total.\n", difftime(time(NULL), st));
 }
 
@@ -219,50 +222,47 @@ void raw(char* s, char* m, int& clen, int& slen) {
 }
 
 void merge_and_write(FILE* off) {
+  PR(off);
   priority_queue<Node> q;
   int where[SEGMENT];
   int csz[SEGMENT];
   memset(where, 0, sizeof where);
   for (int i = 0; i < SEGMENT; ++i) {
-    q.push(Node(bkm[i][0], i));
+    if (!bkm[i].empty()) q.push(Node(bkm[i][0], i));
     csz[i] = bkm[i].size();
   }
   future<bool> sft = async(launch::async, [&]{
     return true;
   });
-  char* mid = new char[WRITE_SEGMENT + COM];
+  char* mid;
   int clen = 0;
   int tlen = 0;
   int slen = 0;
   while (!q.empty()) {
-    Node t = q.top();
-    q.pop();
-    int tr = t.rnk;
-    raw(t.addr, mid, clen, slen);
-    tlen += slen;
-    //prt(t.addr);
-    //int abc;
-    //cin >> abc;
-    //PR(tr);
-    //prt(t.addr);
-    if ((WRITE_SEGMENT < clen || tlen == sz) && sft.get()) {
+    clen = 0;
+    mid = new char[WRITE_SEGMENT + COM];
+    while (!q.empty() && clen < WRITE_SEGMENT) {
+      Node t = q.top();
+      q.pop();
+      int tr = t.rnk;
+      raw(t.addr, mid, clen, slen);
+      tlen += slen;
+      if (where[tr] < csz[tr] - 1) {
+        where[tr]++;
+        q.push(Node(bkm[tr][where[tr]], tr));
+      }
+    }
+    if (sft.get()) {
       int cc = clen;
       char* tmp = mid;
       sft = async(launch::async, [&]{
-        //prtt(tmp, cc, 500);
-        //sleep(5);
+        prt(tmp);
+        PR(cc);
         fwrite(tmp, sizeof(char), cc, off);
+        PR(cc);
         delete[] tmp;
         return true;
       });
-      clen = 0;
-      mid = new char[WRITE_SEGMENT + COM];
-    }
-    //PR(where[tr]);
-    //PR(csz[tr]);
-    if (where[tr] < csz[tr] - 1) {
-      where[tr]++;
-      q.push(Node(bkm[tr][where[tr]], tr));
     }
   }
   sft.get();
@@ -328,17 +328,28 @@ char* radix_sort(char* a, int sz) {
   return a;
 }
 
-char* sort_chars(char* a, int sz) {
-  return radix_sort(a, sz);
+void bucket_sort() {
+  thread t[THREADNUM];
+  int ec = 0;
+  while (ec < SEGMENT) {
+    for (int i = 0; i < THREADNUM; ++i) t[i] = thread(sort_string, ec + i);
+    for (int i = 0; i < THREADNUM; ++i) t[i].join();
+    ec += THREADNUM;
+  }
 }
 
-void sort_write_small_file(char* a, int size, int rnk) {
-  if (TESTTIME) fprintf(stderr, "Begin sort_write_small_file function, size: %d, rnk: %d, time pass: %f seconds.\n", size, rnk, difftime(time(NULL), st));
-  a = sort_chars(a, size);
+void sort_chars() {
+  for (int i = 0; i < SEGMENT; ++i) bkm[i].clear();
+  bucket_sort();
+}
+
+void sort_write_small_file(int rnk) {
+  if (TESTTIME) fprintf(stderr, "Begin sort_write_small_file function, rnk: %d, time pass: %f seconds.\n", rnk, difftime(time(NULL), st));
+  sort_chars();
   if (TESTTIME) fprintf(stderr, "after sort chars, time pass: %f seconds.\n", difftime(time(NULL), st));
   FILE* off = fopen(constr(rnk), "wb");
-  fwrite(a, sizeof(char), size, off);
-  if (TESTTIME) fprintf(stderr, "after write small chars, size: %d, rnk: %d, time pass: %f seconds.\n", size, rnk, difftime(time(NULL), st));
+  merge_and_write(off);
+  if (TESTTIME) fprintf(stderr, "after write small chars, rnk: %d, time pass: %f seconds.\n", rnk, difftime(time(NULL), st));
   fclose(off);
 }
 
@@ -346,6 +357,7 @@ void cutout(ifstream& f, char* a, int size, int& real_size) {
   for (int j = f.gcount() - 1; 0 <= j; --j) 
     if (a[j] == '\n') {
       real_size = j + 1;
+      a[j + 1] = '\0';
       break;
     }
 }
@@ -388,9 +400,10 @@ void merge_big_file(string ofs) {
   future<bool> sft = async(launch::async, [=] {
     return true;
   });
-  char* mid = new char[WRITE_SEGMENT + COM];
+  char* mid;
   while (!q.empty()) {
     int clen = 0;
+    mid = new char[WRITE_SEGMENT + COM];
     while (!q.empty() && clen < WRITE_SEGMENT) {
       Node t = q.top();
       int rk = t.rnk;
@@ -414,12 +427,10 @@ void merge_big_file(string ofs) {
       char* cc = mid;
       int csz = clen;
       sft = async(launch::async, write_chars, cc, csz, off);
-      mid = new char[WRITE_SEGMENT + COM];
     }
   }
   sft.get();
   // clean pointers
-  delete[] mid;
   for (int i = 0; i < sf_len; ++i) delete[] s[i];
   // close file
   for (int i = 0; i < sf_len; ++i) f[i].close();
